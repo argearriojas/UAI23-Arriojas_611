@@ -31,11 +31,11 @@ def windy_cliff_experiment(beta = 20, max_steps=1000):
     dynamics, rewards = get_dynamics_and_rewards(env)
     prior_policy = np.matrix(np.ones((env.nS, env.nA))) / env.nA
 
-    _, _, optimistic_policy, _, optimistic_estimated_distribution = solve_unconstrained(beta, dynamics, rewards, prior_policy, eig_max_it=1000)
+    _, _, _, optimistic_policy, _, optimistic_estimated_distribution = solve_unconstrained(beta, dynamics, rewards, prior_policy, eig_max_it=1000)
     optimistic_true_distribution = compute_policy_induced_distribution(dynamics, optimistic_policy, max_steps)
 
     ground_truth_policy = solve_maxent_value_policy_iteration(beta, env, prior_policy, max_steps)
-    _, _, optimal_policy, _, optimal_estimated_distribution, biasing_info = solve_biased_unconstrained(beta, dynamics, rewards, prior_policy, eig_max_it=1000, ground_truth_policy=ground_truth_policy, evaluate=True, env=env)
+    _, _, _, optimal_policy, _, optimal_estimated_distribution, biasing_info = solve_biased_unconstrained(beta, dynamics, rewards, prior_policy, eig_max_it=1000, ground_truth_policy=ground_truth_policy, evaluate=True, env=env)
     optimal_true_distribution = compute_policy_induced_distribution(dynamics, optimal_policy, max_steps)
 
     fig = plot_dist(desc,
@@ -84,7 +84,7 @@ def random_maze_experiment(size=10, traps=10, wind_strength=2, beta=30, max_step
 
     ground_truth_policy = solve_maxent_value_policy_iteration(beta, env, prior_policy, max_it=1000)
 
-    _, _, optimal_policy, _, _, info = solve_biased_unconstrained(beta, dynamics, rewards, prior_policy, eig_max_it=1000, bias_max_it=bias_max_it, ground_truth_policy=ground_truth_policy, quiet=not show_plots)
+    _, _, _, optimal_policy, _, _, info = solve_biased_unconstrained(beta, dynamics, rewards, prior_policy, eig_max_it=1000, bias_max_it=bias_max_it, ground_truth_policy=ground_truth_policy, quiet=not show_plots)
     optimal_true_distribution = compute_policy_induced_distribution(dynamics, optimal_policy, max_steps)
 
     error_policy = kl_divergence(optimal_policy, ground_truth_policy, axis=1).max()
@@ -155,14 +155,14 @@ def failure_mode_experiment(beta=15, wind_strength=0.5, max_steps=1000):
     target_dyn, rewards = get_dynamics_and_rewards(target_env)
 
     # first we solve the initial problem where all actions work
-    _, _, policy, _, _, _ = solve_biased_unconstrained(beta, prior_dyn, rewards, prior_pol, target_dynamics=prior_dyn)
+    _, _, _, policy, _, _, _ = solve_biased_unconstrained(beta, prior_dyn, rewards, prior_pol, target_dynamics=prior_dyn)
     healthy_agent_distribution = compute_policy_induced_distribution(prior_dyn, policy, max_steps, prior_env.isd)
     failing_agent_distribution = compute_policy_induced_distribution(target_dyn, policy, max_steps, target_env.isd)
     healthy_agent_evaluation = evaluate_policy(prior_env, policy, max_steps)
     failing_agent_evaluation = evaluate_policy(target_env, policy, max_steps)
 
     # now we consider the prior dynamics to solve the case where action 'up' has been suppressed
-    _, _, policy, _, _, _ = solve_biased_unconstrained(beta, prior_dyn, rewards, prior_pol, target_dynamics=target_dyn)
+    _, _, _, policy, _, _, _ = solve_biased_unconstrained(beta, prior_dyn, rewards, prior_pol, target_dynamics=target_dyn)
     failing_agent_alt_distribution = compute_policy_induced_distribution(target_dyn, policy, max_steps, target_env.isd)
     failing_agent_alt_evaluation = evaluate_policy(target_env, policy, max_steps)
 
@@ -229,7 +229,7 @@ def solve_unconstrained(beta, dynamics, rewards, prior_policy, eig_max_it=10000)
 
     estimated_distribution = np.array(np.multiply(u, v.T).reshape((nS, nA)).sum(axis=1)).flatten()
 
-    return u, v, optimal_policy, optimal_dynamics, estimated_distribution
+    return lu, u, v, optimal_policy, optimal_dynamics, estimated_distribution
 
 
 def solve_biased_unconstrained(beta, prior_dynamics, rewards, prior_policy=None, target_dynamics=None, eig_max_it=10000, bias_max_it=200, ground_truth_policy=None, evaluate=False, env=None, quiet=False):
@@ -252,7 +252,7 @@ def solve_biased_unconstrained(beta, prior_dynamics, rewards, prior_policy=None,
     evaluation_list = []
     for i in range(bias_max_it):
 
-        u, v, optimal_policy, optimal_dynamics, estimated_distribution = solve_unconstrained(beta, biased_dynamics, biased_rewards, prior_policy, eig_max_it=eig_max_it)
+        l, u, v, optimal_policy, optimal_dynamics, estimated_distribution = solve_unconstrained(beta, biased_dynamics, biased_rewards, prior_policy, eig_max_it=eig_max_it)
         if evaluate:
             assert env is not None, "Must provide environment for policy evaluation"
             evaluation = evaluate_policy(env, optimal_policy, env._max_episode_steps)
@@ -283,7 +283,7 @@ def solve_biased_unconstrained(beta, prior_dynamics, rewards, prior_policy=None,
         evaluation=evaluation_list,
         iterations_completed=i,
     )
-    return u, v, optimal_policy, optimal_dynamics, estimated_distribution, info
+    return l, u, v, optimal_policy, optimal_dynamics, estimated_distribution, info
 
 
 def solve_maxent_value_policy_iteration(beta, env, prior_policy, max_it):
