@@ -4,3 +4,7 @@
 *.pyc
 *.pdf
 *.bk
+*.png 
+*.eps
+*.svg
+*.json
