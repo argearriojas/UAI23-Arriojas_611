@@ -16,7 +16,7 @@ Download two files: `windy_frozen_lake_experiments.py` and `classic_control_expe
 
 ## Run all experiments
 
-You can run this commands to go through all experiments sequentially 
+You can run these commands to go through all experiments sequentially 
 ```
 python windy_frozen_lake_experiments.py
 python windy_frozen_lake_model_free.py
